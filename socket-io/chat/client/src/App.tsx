@@ -24,6 +24,8 @@ function App() {
   const [msgList, setMsgList] = useState<Msg[]>([]);
   // private 채팅을 위한 타겟
   const [privateTarget, setPrivateTarget] = useState<string>('');
+  // 선택한 방(room) 저장
+  const [roomNumber, setRoomNumber] = useState('1');
 
   const scrollTopBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,11 +54,11 @@ function App() {
     if (!webSocket) {
       return;
     }
-    const sLoginCallback = (msg: string) => {
+    const sLoginCallback = (msg: { userId: string; roomNumber: string }) => {
       setMsgList((prev) => [
         ...prev,
         {
-          msg: `${msg} joins the chat`,
+          msg: `${msg.userId} joins the chat`,
           type: 'welcome',
           id: ''
         }
@@ -77,7 +79,7 @@ function App() {
   const onSubmitHandler = (e: React.FormEvent) => {
     e.preventDefault();
     // 로그인 id를 소켓 서버로 전송
-    webSocket.emit('login', userId);
+    webSocket.emit('login', { userId, roomNumber });
     setIsLogin(true);
   };
 
@@ -109,13 +111,18 @@ function App() {
     }
   };
 
+  const onRoomChangeHandler = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRoomNumber(e.target.value);
+  };
+
   return (
     <div className="app-container">
       <div className="wrap">
         {isLogin ? (
-          // 10
           <div className="chat-box">
-            <h3>Login as a "{userId}"</h3>
+            <h3>
+              Login as a "{userId}" in Room {roomNumber}
+            </h3>
             <ul className="chat">
               {msgList.map((v, i) =>
                 v.type === 'welcome' ? (
@@ -155,7 +162,7 @@ function App() {
               className="send-form"
               onSubmit={onSendSubmitHandler}
             >
-              {privateTarget && <div className="private-user">{privateTarget}</div>}
+              {privateTarget && <div className="private-target">{privateTarget}</div>}
               <input
                 placeholder="Enter your message"
                 onChange={onChangeMsgHandler}
@@ -179,6 +186,10 @@ function App() {
               className="login-form"
               onSubmit={onSubmitHandler}
             >
+              <select onChange={onRoomChangeHandler}>
+                <option value="1">Room 1</option>
+                <option value="2">Room 2</option>
+              </select>
               <input
                 placeholder="Enter your ID"
                 onChange={onChangeUserIdHandler}

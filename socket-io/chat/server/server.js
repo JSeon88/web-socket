@@ -15,17 +15,31 @@ io.sockets.on("connection", (socket) => {
   // 커스텀 구분자인 "message"로 클라이언트에서 오는 메세지 받음
   socket.on("message", (data) => {
     const { target } = data;
-    // 있다면 특정 유저한테, 없다면 일반적인 broadcast
-    const toUser = clients.get(target);
-    target
-      ? io.sockets.to(toUser).emit("sMessage", data)
-      : socket.broadcast.emit("sMessage", data);
+
+    if (target) {
+      const toUser = clients.get(target);
+      io.sockets.to(toUser).emit("sMessage", data);
+      return;
+    }
+
+    const myRooms = Array.from(socket.rooms);
+    if (myRooms.length > 1) {
+      // 지정된 방에만 데이터 전송
+      // broadcast를 붙인 이유는 내가 보낸 메세지는 스스로 받지 않기 위함임.
+      socket.broadcast.in(myRooms[1]).emit("sMessage", data);
+      return;
+    }
+    socket.broadcast.emit("sMessage", data);
   });
 
   // 커스텀 구분자인 "login"로 클라이언트에서 오는 메세지 받음
   socket.on("login", (data) => {
+    const { userId, roomNumber } = data;
+
+    // 특정 방으로 접속
+    socket.join(roomNumber);
     // socket.id : 소켓의 고유 번호
-    clients.set(data, socket.id);
+    clients.set(userId, socket.id);
     socket.broadcast.emit("sLogin", data);
   });
 
