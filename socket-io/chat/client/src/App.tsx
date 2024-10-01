@@ -8,6 +8,7 @@ type Msg = {
   id: string;
   type: string;
   msg: string;
+  target?: string;
 };
 
 // socket.io 초기화
@@ -21,6 +22,8 @@ function App() {
   const [msg, setMsg] = useState('');
   // Webchat에 필요한 상태 변수
   const [msgList, setMsgList] = useState<Msg[]>([]);
+  // private 채팅을 위한 타겟
+  const [privateTarget, setPrivateTarget] = useState<string>('');
 
   const scrollTopBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,8 +36,8 @@ function App() {
     }
 
     const sMessageCallback = (data: Msg) => {
-      const { msg, id } = data;
-      setMsgList((prev: Msg[]) => [...prev, { id, type: 'other', msg }]);
+      const { msg, id, target } = data;
+      setMsgList((prev: Msg[]) => [...prev, { id, type: target ? 'private' : 'other', msg }]);
     };
 
     webSocket.on('sMessage', sMessageCallback);
@@ -87,7 +90,8 @@ function App() {
     e.preventDefault();
     const sendDate = {
       msg: msg,
-      id: userId
+      id: userId,
+      target: privateTarget
     };
     webSocket.emit('message', sendDate);
     setMsgList((prev: Msg[]) => [...prev, { id: userId, type: 'me', msg }]);
@@ -96,6 +100,13 @@ function App() {
 
   const onChangeMsgHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMsg(e.target.value);
+  };
+
+  const onSetPrivateTarget = (e: React.MouseEvent<HTMLLIElement>) => {
+    const { id } = (e.target as HTMLLIElement)?.dataset;
+    if (id) {
+      setPrivateTarget((prev) => (prev === id ? '' : id));
+    }
   };
 
   return (
@@ -108,7 +119,10 @@ function App() {
             <ul className="chat">
               {msgList.map((v, i) =>
                 v.type === 'welcome' ? (
-                  <li className="welcome">
+                  <li
+                    className="welcome"
+                    key={`${i}_li`}
+                  >
                     <div className="line" />
                     <div>{v.msg}</div>
                     <div className="line" />
@@ -117,9 +131,21 @@ function App() {
                   <li
                     className={v.type}
                     key={`${i}_li`}
+                    data-id={v.id}
+                    onClick={onSetPrivateTarget}
                   >
-                    <div className="userId">{v.id}</div>
-                    <div className={v.type}>{v.msg}</div>
+                    <div
+                      className={v.id === privateTarget ? 'private-user' : userId}
+                      data-id={v.id}
+                    >
+                      {v.id}
+                    </div>
+                    <div
+                      className={v.type}
+                      data-id={v.id}
+                    >
+                      {v.msg}
+                    </div>
                   </li>
                 )
               )}
@@ -129,6 +155,7 @@ function App() {
               className="send-form"
               onSubmit={onSendSubmitHandler}
             >
+              {privateTarget && <div className="private-user">{privateTarget}</div>}
               <input
                 placeholder="Enter your message"
                 onChange={onChangeMsgHandler}
